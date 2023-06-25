@@ -11,6 +11,8 @@ contract CrowdFunding {
     // accept info => return campaign id
     function createCampaign(string memory _title, string memory _description, uint256 _target, uint256 _deadline, string memory _image) public returns (uint256) {
         Campaign campaign = new Campaign(_title, _description, _target, _deadline, _image);
+        Campaign(campaign).transferOwnership(msg.sender);
+
         campaigns[numberOfCampaigns] = campaign;
 
         numberOfCampaigns++;
