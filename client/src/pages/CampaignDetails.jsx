@@ -10,17 +10,18 @@ import { thirdweb } from '../assets';
 const CampaignDetails = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { donate, getDonations, contract, address } = useStateContext();
+  const { donate, withdraw, getDonations, contract, address } = useStateContext();
 
   const [isLoading, setIsLoading] = useState(false);
   const [amount, setAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [donators, setDonators] = useState([]);
 
   console.log(state);
   const remainingDays = daysLeft(state.deadline);
 
   const fetchDonators = async () => {
-    const data = await getDonations(state.pId);
+    const data = await getDonations(state.address);
 
     setDonators(data);
   };
@@ -32,7 +33,16 @@ const CampaignDetails = () => {
   const handleDonate = async () => {
     setIsLoading(true);
 
-    await donate(state.pId, amount);
+    await donate(state.address, amount);
+
+    navigate('/');
+    setIsLoading(false);
+  };
+
+  const handleWithdraw = async () => {
+    setIsLoading(true);
+
+    await withdraw(state.address, withdrawAmount);
 
     navigate('/');
     setIsLoading(false);
@@ -176,6 +186,44 @@ const CampaignDetails = () => {
             </div>
           </div>
         </div>
+        <div className="flex-1">
+          <h4 className="font-epilogue font-semibold text-[18px] text-white uppercase">
+            Withdraw
+          </h4>
+
+          <div className="mt-[20px] flex flex-col p-4 bg-[#1c1c24] rounded-[10px]">
+            <p className="font-epilogue fount-medium text-[20px] leading-[30px] text-center text-[#808191]">
+              Withdraw your funds
+            </p>
+            <div className="mt-[30px]">
+              <input
+                type="number"
+                placeholder="ETH 0.1"
+                step="0.01"
+                className="w-full py-[10px] sm:px-[20px] px-[15px] outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[18px] leading-[30px] placeholder:text-[#4b5264] rounded-[10px]"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+              />
+
+              <div className="my-[20px] p-4 bg-[#13131a] rounded-[10px]">
+                <h4 className="font-epilogue font-semibold text-[14px] leading-[22px] text-white">
+                  Thanks for your sharing.
+                </h4>
+                <p className="mt-[20px] font-epilogue font-normal leading-[22px] text-[#808191]">
+                  See you in the next campaign.
+                </p>
+              </div>
+
+              <CustomButton
+                btnType="button"
+                title="Withdraw Funds"
+                styles="w-full bg-[#FFA500]"
+                handleClick={handleWithdraw}
+              />
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

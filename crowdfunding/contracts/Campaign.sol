@@ -2,14 +2,12 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+//import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+//import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "hardhat/console.sol";
-
 contract Campaign is Ownable {
-    using SafeERC20 for IERC20;
+    //using SafeERC20 for IERC20;
     using Address for address payable;
 
     struct Donator {
@@ -26,7 +24,6 @@ contract Campaign is Ownable {
     }
 
     Description description;
-    address payable public contractAddress;
     uint256 numberOfDonators;
     uint256 amountCollected;
     mapping (uint256=>address) id2donator;
@@ -39,15 +36,13 @@ contract Campaign is Ownable {
         uint256 _deadline,
         string memory _image
     ) {
-        require(_deadline < block.timestamp, "The deadline should be a date in future.");
-
+        require(_deadline > block.timestamp, "The deadline should be a date in future.");
         description.title = _title;
         description.description = _description;
         description.target = _target;
         description.deadline = _deadline;
         description.image = _image;
         amountCollected = 0;
-        contractAddress = payable(address(this));
     }
 
     receive() external payable {
@@ -61,8 +56,6 @@ contract Campaign is Ownable {
 
         Donator storage donator = donators[msg.sender];
 
-        console.log("Get the donator");
-
         if (donator.totalDonated == 0) {
             id2donator[numberOfDonators] = msg.sender;
             donator.donator = msg.sender;
@@ -72,9 +65,6 @@ contract Campaign is Ownable {
 
         donator.totalDonated += _amount;
         amountCollected += _amount;
-        console.log("Recieved amount: ", _amount);
-        console.log("donator amount: ", donator.totalDonated);
-         
         return _amount;
     }
 
@@ -98,11 +88,15 @@ contract Campaign is Ownable {
         return result;
     }
 
-    function getDesciption() external view returns (Description memory) {
-        return description;
+    function getDonator(address _donator) external view returns (Donator memory) {
+        return donators[_donator];
     }
 
-    function getBalance() external view returns (uint256) {
-        return address(this).balance;
+    function getAmountCollected() external view returns (uint256) {
+        return amountCollected;
+    }
+
+    function getDescription() external view returns (Description memory) {
+        return description;
     }
 }
