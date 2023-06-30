@@ -74,8 +74,8 @@ export const StateContextProvider = ({ children }) => {
     const parsedCampaigns = await Promise.all(
       campaigns.map(async (campaign, i) => {
         const campaignContract = await sdk.getContract(campaign, campaignData.abi);
-        const campaignDescription = await campaignContract.call('getDescription', []);
-        const campaignAmountCollected = await campaignContract.call('getAmountCollected', []);
+        const campaignDescription = await campaignContract.call('description', []);
+        const campaignAmountCollected = await campaignContract.call('amountCollected', []);
         const campaignOwner = await campaignContract.call('owner', []);
         console.log(campaignDescription);
         console.log(campaignOwner);
@@ -144,6 +144,25 @@ export const StateContextProvider = ({ children }) => {
     return data;
   };
 
+  const withdrawCampaign = async (campaignAddress) => {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const campaignContract = new ethers.Contract(campaignAddress, campaignData.abi, signer);
+
+    const ethersAmount = ethers.utils.parseEther(amount.toString());
+
+    let data
+    let errorMsg
+    try {
+      data = await campaignContract.withdrawCampaign(ethersAmount);
+      console.log("Withdraw success: ", data)
+    } catch (error) {
+      console.log("Withdraw error: ", error)
+    }
+    return data;
+  }
+
   // PASS
   const getDonations = async (campaignAddress) => {
     //const campaignContract = await sdk.getContract(campaignAddress, campaignData.abi);
@@ -151,7 +170,7 @@ export const StateContextProvider = ({ children }) => {
 
     const campaignContract = new ethers.Contract(campaignAddress, campaignData.abi, provider);
 
-    const donations = await campaignContract.getDonators();
+    const donations = await campaignContract.donators();
 
     const parsedDonations = donations.map((donation) => {
       return {
@@ -174,6 +193,7 @@ export const StateContextProvider = ({ children }) => {
         getUserCampaigns,
         donate,
         withdraw,
+        withdrawCampaign,
         getDonations,
       }}
     >

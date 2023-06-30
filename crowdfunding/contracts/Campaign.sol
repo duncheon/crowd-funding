@@ -23,26 +23,26 @@ contract Campaign is Ownable {
         string image;
     }
 
-    Description description;
-    uint256 numberOfDonators;
-    uint256 amountCollected;
-    mapping (uint256=>address) id2donator;
-    mapping (address => Donator) donators;
+    Description _description;
+    uint256 _numberOfDonators;
+    uint256 _amountCollected;
+    mapping (uint256=>address) _id2donator;
+    mapping (address => Donator) _donators;
 
     constructor (
-        string memory _title,
-        string memory _description,
-        uint256 _target,
-        uint256 _deadline,
-        string memory _image
+        string memory title,
+        string memory campaignDescription,
+        uint256 target,
+        uint256 deadline,
+        string memory image
     ) {
-        require(_deadline > block.timestamp, "The deadline should be a date in future.");
-        description.title = _title;
-        description.description = _description;
-        description.target = _target;
-        description.deadline = _deadline;
-        description.image = _image;
-        amountCollected = 0;
+        require(deadline > block.timestamp, "The deadline should be a date in future.");
+        _description.title = title;
+        _description.description = campaignDescription;
+        _description.target = target;
+        _description.deadline = deadline;
+        _description.image = image;
+        _amountCollected = 0;
     }
 
     receive() external payable {
@@ -50,53 +50,62 @@ contract Campaign is Ownable {
         // Additional logic can be added here if needed
     }
 
-    function donate(uint256 _amount) external payable returns (uint256) {
-        require(_amount > 0, "You need to send some ether");
-        require(msg.value == _amount, "Incorrect donation amount");
+    function donate(uint256 amount) external payable returns (uint256) {
+        require(_description.deadline <= block.timestamp, "The campaign is end");
+        require(amount > 0, "You need to send some ether");
+        require(msg.value == amount, "Incorrect donation amount");
 
-        Donator storage donator = donators[msg.sender];
+        Donator storage dnt = _donators[msg.sender];
 
-        if (donator.totalDonated == 0) {
-            id2donator[numberOfDonators] = msg.sender;
-            donator.donator = msg.sender;
-            donator.totalDonated = 0;
-            numberOfDonators++;
+        if (dnt.totalDonated == 0) {
+            _id2donator[_numberOfDonators] = msg.sender;
+            dnt.donator = msg.sender;
+            dnt.totalDonated = 0;
+            _numberOfDonators++;
         }
 
-        donator.totalDonated += _amount;
-        amountCollected += _amount;
-        return _amount;
+        dnt.totalDonated += amount;
+        _amountCollected += amount;
+        return amount;
     }
 
-    function withdraw(uint256 _amount) external returns (uint256) {
-        Donator storage donator = donators[msg.sender];
-        require(donator.totalDonated >= _amount, "You don't have enough tokens to withdraw");
+    function withdraw(uint256 amount) external returns (uint256) {
+        Donator storage dnt = _donators[msg.sender];
+        require(_description.deadline <= block.timestamp, "The campaign is end");
+        require(dnt.totalDonated >= amount, "You don't have enough tokens to withdraw");
 
-        payable(msg.sender).transfer(_amount);
+        payable(msg.sender).transfer(amount);
 
-        donator.totalDonated -= _amount;
-        amountCollected -= _amount;
+        dnt.totalDonated -= amount;
+        _amountCollected -= amount;
 
-        return _amount;
+        return amount;
     }
 
-    function getDonators() external view returns (Donator[] memory) {
-        Donator[] memory result = new Donator[](numberOfDonators);
-        for (uint256 i = 0; i < numberOfDonators; i++) {
-            result[i] = donators[id2donator[i]];
+    function withdrawCampaign() external onlyOwner returns (uint256) {
+        require(_description.deadline <= block.timestamp, "Campaign still running");
+        uint256 currentBalance = address(this).balance;
+        payable(msg.sender).transfer(address(this).balance);
+        return currentBalance;
+    }
+
+    function donators() external view returns (Donator[] memory) {
+        Donator[] memory result = new Donator[](_numberOfDonators);
+        for (uint256 i = 0; i < _numberOfDonators; i++) {
+            result[i] = _donators[_id2donator[i]];
         }
         return result;
     }
 
-    function getDonator(address _donator) external view returns (Donator memory) {
-        return donators[_donator];
+    function donator(address donatorAddress) external view returns (Donator memory) {
+        return _donators[donatorAddress];
     }
 
-    function getAmountCollected() external view returns (uint256) {
-        return amountCollected;
+    function amountCollected() external view returns (uint256) {
+        return _amountCollected;
     }
 
-    function getDescription() external view returns (Description memory) {
-        return description;
+    function description() external view returns (Description memory) {
+        return _description;
     }
 }
