@@ -36,7 +36,7 @@ contract Campaign is Ownable {
         uint256 deadline,
         string memory image
     ) {
-        require(deadline > block.timestamp, "The deadline should be a date in future.");
+        //require(deadline > block.timestamp, "The deadline should be a date in future.");
         _description.title = title;
         _description.description = campaignDescription;
         _description.target = target;
@@ -51,7 +51,6 @@ contract Campaign is Ownable {
     }
 
     function donate(uint256 amount) external payable returns (uint256) {
-        require(_description.deadline <= block.timestamp, "The campaign is end");
         require(amount > 0, "You need to send some ether");
         require(msg.value == amount, "Incorrect donation amount");
 
@@ -71,7 +70,6 @@ contract Campaign is Ownable {
 
     function withdraw(uint256 amount) external returns (uint256) {
         Donator storage dnt = _donators[msg.sender];
-        require(_description.deadline <= block.timestamp, "The campaign is end");
         require(dnt.totalDonated >= amount, "You don't have enough tokens to withdraw");
 
         payable(msg.sender).transfer(amount);
@@ -82,11 +80,11 @@ contract Campaign is Ownable {
         return amount;
     }
 
-    function withdrawCampaign() external onlyOwner returns (uint256) {
-        require(_description.deadline <= block.timestamp, "Campaign still running");
-        uint256 currentBalance = address(this).balance;
-        payable(msg.sender).transfer(address(this).balance);
-        return currentBalance;
+    function withdrawCampaign() external onlyOwner {
+        address _owner = owner();
+        uint256 balance = address(this).balance;
+        (bool sent, ) = _owner.call{value: balance}("");
+        require(sent, "Failed to send Ether");
     }
 
     function donators() external view returns (Donator[] memory) {
