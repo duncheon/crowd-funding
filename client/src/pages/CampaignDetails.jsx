@@ -1,46 +1,136 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ethers } from 'ethers';
+import {
+  useAddress
+} from '@thirdweb-dev/react';
 
 import { useStateContext } from '../context';
 import { CountBox, CustomButton, Loader } from '../components';
-import { calculateBarPercentage, daysLeft } from '../utils';
+import { calculateBarPercentage, daysLeft, timeLeft } from '../utils';
 import { thirdweb } from '../assets';
+import DonateForm from '../components/DonateForm';
+import WithdrawForm from '../components/WithdrawForm';
+import OwnerWithdrawForm from '../components/OwnerWithdrawForm'
 
 const CampaignDetails = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { donate, getDonations, contract, address } = useStateContext();
+  const { donate, withdraw, withdrawCampaign, getDonations, getCampaignBalance, contract, address } = useStateContext();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
   const [amount, setAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawCampaignAmount, setWithdrawCampaignAmount] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
   const [donators, setDonators] = useState([]);
+  const [userBalance, setUserBalance] = useState(0);
+  const [campaignBalance, setCampaignBalance] = useState(0);
 
-  console.log(state);
   const remainingDays = daysLeft(state.deadline);
+  const remainingTime = timeLeft(state.deadline);
 
   const fetchDonators = async () => {
-    const data = await getDonations(state.pId);
-
+    const data = await getDonations(state.address);
     setDonators(data);
   };
 
   useEffect(() => {
     if (contract) fetchDonators();
+    console.log(walletAddress)
   }, [contract, address]);
+
+  useEffect(() => {
+    fetchUserBalance(walletAddress)
+  }, [walletAddress])
+
+  useEffect(() => {
+    const handleCampaignBalance = async () => {
+      try {
+        const balance = await getCampaignBalance(state.address);
+        setCampaignBalance(balance)
+      } catch (error) {
+        console.log(error)
+      }
+    }
+  }, [contract])
+
+  useEffect(() => {
+    const handleWalletAddressChange = async () => {
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        setWalletAddress(address);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    handleWalletAddressChange();
+    // Subscribe to address change events
+    window.ethereum.on('accountsChanged', handleWalletAddressChange);
+
+    // Clean up the subscription on component unmount
+    return () => {
+      window.ethereum.removeListener('accountsChanged', handleWalletAddressChange);
+    };
+  }, []);
 
   const handleDonate = async () => {
     setIsLoading(true);
 
-    await donate(state.pId, amount);
+    const { data, error } =  await donate(state.address, amount);
+
+    if (error !== null) {
+      setErrorMsg(error)
+    }
 
     navigate('/');
     setIsLoading(false);
   };
 
+  const handleWithdraw = async () => {
+    setIsLoading(true);
+
+    const { data, error } = await withdraw(state.address, withdrawAmount);
+
+    navigate('/');
+    setIsLoading(false);
+  };
+
+  const handleWithdrawCampaign = async () => {
+    setIsLoading(true);
+
+    await withdrawCampaign(state.address);
+    
+    navigate('/');
+    setIsLoading(false);
+  }
+  
+  const fetchUserBalance = (address) => {
+    const addressDonation = donators.filter(item => item.donator === address);
+    if (addressDonation.length > 0) {
+      setUserBalance(addressDonation[0].donation)
+    }
+  }
+
   return (
     <div>
       {isLoading && <Loader />}
+
+      {/* { errorMsg && (
+      <div id="errorBanner" class="bg-red-500 text-white text-sm p-4 fixed top-0 left-0 right-0 opacity-100 transition-opacity duration-500">
+        {errorMsg}
+      </div>
+      )} */}
+
+      { remainingTime < 0 && (
+          <div class="bg-red-500 text-white text-4xl p-8 border-2 border-black w-ful rounded-xl">
+            This Campaign is ended!
+          </div>
+      )}
 
       <div className="w-full flex md:flex-row flex-col mt-10 gap-[30px]">
         <div className="flex-1 flex-col">
@@ -138,44 +228,42 @@ const CampaignDetails = () => {
           </div>
         </div>
 
-        <div className="flex-1">
-          <h4 className="font-epilogue font-semibold text-[18px] text-white uppercase">
-            Fund
-          </h4>
-
-          <div className="mt-[20px] flex flex-col p-4 bg-[#1c1c24] rounded-[10px]">
-            <p className="font-epilogue fount-medium text-[20px] leading-[30px] text-center text-[#808191]">
-              Fund the campaign
-            </p>
-            <div className="mt-[30px]">
-              <input
-                type="number"
-                placeholder="ETH 0.1"
-                step="0.01"
-                className="w-full py-[10px] sm:px-[20px] px-[15px] outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[18px] leading-[30px] placeholder:text-[#4b5264] rounded-[10px]"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-
-              <div className="my-[20px] p-4 bg-[#13131a] rounded-[10px]">
-                <h4 className="font-epilogue font-semibold text-[14px] leading-[22px] text-white">
-                  Back it because you believe in it.
-                </h4>
-                <p className="mt-[20px] font-epilogue font-normal leading-[22px] text-[#808191]">
-                  Support the project for no reward, just because it speaks to
-                  you.
-                </p>
-              </div>
-
-              <CustomButton
-                btnType="button"
-                title="Fund Campaign"
-                styles="w-full bg-[#8c6dfd]"
-                handleClick={handleDonate}
-              />
-            </div>
+        { (remainingTime >= 0 && walletAddress !== state.owner) && (
+          <div>
+            <DonateForm 
+            handleOnChange={(e) => setAmount(e.target.value)}
+            handleDonate={handleDonate}
+            amount={amount}
+            /> 
+            <WithdrawForm
+              handleOnChange={(e) => setWithdrawCampaignAmount(e.target.value)}
+              handleWithdraw={handleWithdraw}
+              amount={withdrawAmount}
+              balance={userBalance}
+            />
           </div>
-        </div>
+        )}
+
+        { (walletAddress === state.owner && state.deadline < Date.now()) && (
+          <div>
+            <p className="font-epilogue font-normal text-[16px] text-[#808191] leading-[26px] text-justify">
+              You now the owner and can make a campaign withdraw!
+            </p>
+            <OwnerWithdrawForm 
+              handleOnChange={(e) => setWithdrawCampaignAmount(e.target.value)}
+              handleWithdraw={handleWithdrawCampaign}
+              balance={state.amountCollected}
+            />
+          </div>
+        ) }
+
+        {(walletAddress === state.owner && state.deadline >= Date.now()) && 
+          (
+            <p className="font-epilogue font-normal text-[32px] text-[#808191] leading-[26px] text-justify">
+                Your campaign is still running!
+            </p>
+          )
+        }
       </div>
     </div>
   );

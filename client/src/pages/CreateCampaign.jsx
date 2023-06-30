@@ -104,7 +104,7 @@ const CreateCampaign = () => {
           <FormField
             labelName="End Date *"
             placeholder="End Date"
-            inputType="date"
+            inputType="datetime-local"
             value={form.deadline}
             handleChange={(e) => handleFormFieldChange('deadline', e)}
           />
