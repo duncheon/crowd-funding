@@ -59,7 +59,6 @@ export const StateContextProvider = ({ children }) => {
 
       const crowdFundingContract = new ethers.Contract(import.meta.env.VITE_CROWDFUNDING_CONTRACT_ADDRESS, crowdFundingData.abi, signer);
       data = await crowdFundingContract.addCampaign(campaignContract.address);
-      console.log("Add campaign success: ", data);
     } catch (error) {
       console.log("Add campaign error: ", error);
     }
@@ -94,15 +93,12 @@ export const StateContextProvider = ({ children }) => {
         return parsedCampaign;
       })
     );
-    
-    console.log(parsedCampaigns);
     return parsedCampaigns;
   };
 
   // PASS
   const getUserCampaigns = async () => {
     const allCampaigns = await getCampaigns();
-    console.log(address);
     const filteredCampaigns = allCampaigns.filter(
       (campaign) => campaign.owner === address
     );
@@ -110,6 +106,16 @@ export const StateContextProvider = ({ children }) => {
     console.log(allCampaigns);
     return filteredCampaigns;
   };
+
+  const getCampaignBalance = async (campaignAddress) => {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const balance = await provider.getBalance(campaignAddress);
+      return ethers.utils.formatEther(balance);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
 
   // PASS
   const donate = async (campaignAddress, amount) => {
@@ -120,12 +126,23 @@ export const StateContextProvider = ({ children }) => {
     const campaignContract = new ethers.Contract(campaignAddress, campaignData.abi, signer);
 
     const ethersAmount = ethers.utils.parseEther(amount.toString());
+
+    console.log()
       
-    const data = await campaignContract.donate(ethersAmount, {value: ethersAmount});
+    let data;
+    let error=null;
 
-    return data;
+    try {
+      data = await campaignContract.donate(ethersAmount, {value: ethersAmount});
+      return { data, error }
+    } catch (err) {
+      error = err
+      return { data, error };
+    }
   };
+  
 
+  // PASS
   const withdraw = async (campaignAddress, amount) => {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
@@ -134,33 +151,34 @@ export const StateContextProvider = ({ children }) => {
 
     const ethersAmount = ethers.utils.parseEther(amount.toString());
 
-    let data
+    let data;
+    let error=null;
     try {
       data = await campaignContract.withdraw(ethersAmount);
       console.log("Withdraw success: ", data);
-    } catch (error) {
+    } catch (err) {
       console.log("Withdraw error: ", error);
+      error = err
+      return { data, error }
     }
-    return data;
+    return { data, error };
   };
 
+  // PASS
   const withdrawCampaign = async (campaignAddress) => {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     const signer = provider.getSigner();
     const campaignContract = new ethers.Contract(campaignAddress, campaignData.abi, signer);
 
-    const ethersAmount = ethers.utils.parseEther(amount.toString());
-
     let data
-    let errorMsg
+    let error=null
     try {
-      data = await campaignContract.withdrawCampaign(ethersAmount);
-      console.log("Withdraw success: ", data)
-    } catch (error) {
-      console.log("Withdraw error: ", error)
+      await campaignContract.withdrawCampaign();
+      console.log("Withdraw success: ")
+    } catch (err) {
+      console.log("Withdraw failed: ")
     }
-    return data;
   }
 
   // PASS
@@ -191,6 +209,7 @@ export const StateContextProvider = ({ children }) => {
         createCampaign: publishCampaign,
         getCampaigns,
         getUserCampaigns,
+        getCampaignBalance,
         donate,
         withdraw,
         withdrawCampaign,
