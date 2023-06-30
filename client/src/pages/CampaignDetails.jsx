@@ -236,7 +236,7 @@ const CampaignDetails = () => {
             amount={amount}
             /> 
             <WithdrawForm
-              handleOnChange={(e) => setWithdrawCampaignAmount(e.target.value)}
+              handleOnChange={(e) => setWithdrawAmount(e.target.value)}
               handleWithdraw={handleWithdraw}
               amount={withdrawAmount}
               balance={userBalance}
